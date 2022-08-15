@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Forbidden Words Game</title>
+</head>
+
+<body>
+  <h1 id="header">Forbidden Words</h1>
+  <p id="name">Type Your Name</p>
+  <input type="text" id="playerName" placeholder="Player Name"/>
+  <i id="playerNameText"></i><br>
+  Please insert 2 words<br>
+  <input type="text" id="word1" placeholder="Word 1"/><br>
+  <input type="text" id="word2" placeholder="Word 2"/>
+  <p id="moreWordText"></p>
+  <button id="addWordButton" onclick="AddWord()">Add word</button><br>
+  <button id="readyButton" onclick="ReadyCheck()">Ready</button><br>
+  <P id="readyText">You're READY, Wait for other player.</P>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+  <script>
+    let isReady = false;
+    let wordNeeded = 2;
+    $('#readyText').hide();
+
+    var socket = io.connect('http://localhost:3000');
+    socket.on('connect', function (data) {
+      socket.emit('join');
+    });
+    socket.on('wordAdded', (moreWordNeeded)=>{
+      wordNeeded = moreWordNeeded;
+      for (let i = 1; i <= moreWordNeeded; i++){
+        $('#word' + i).show();
+      }
+      if(moreWordNeeded !== 0){
+        document.getElementById('moreWordText').innerHTML = "Need more " + moreWordNeeded + " word" + (moreWordNeeded > 1 ? 's':'');
+      }
+      else{
+        $('#moreWordText').hide();
+        $('#addWordButton').hide();
+      }
+    });
+
+    function AddWord(playerName){
+      if($('#playerName').val() === ""){
+        document.getElementById('playerNameText').innerHTML = "Please insert your name."
+        return;
+      }
+      else{
+        $('#playerNameText').hide();
+      }
+
+      document.getElementById('name').innerHTML = "Your name: " + playerName;
+      $('#playerName').hide();
+
+      let words = []
+      if ($('#word1').val() !== "") {
+        words.push($('#word1').val());
+      } 
+      if ($('#word2').val() !== "" && $('#word2').val() !== $('#word1').val()) {
+        words.push($('#word2').val());
+      }
+
+      document.getElementById('word1').innerHTML = "";
+      document.getElementById('word2').innerHTML = "";
+      $('#word1').hide();
+      $('#word2').hide();
+
+      socket.emit('addWord', playerName,wordNeeded,JSON.stringify(words));
+    }
+
+    function ReadyCheck(){
+      if(wordNeeded > 0){
+        return
+      }
+
+      isReady = true;
+      $('#readyButton').hide();
+      $('#readyText').show();
+      let playerName = $('#playerName').val();
+      document.getElementById('playerNameText').innerHTML = playerName;
+      socket.emit('readyCheck', playerName);
+    }
+
+    socket.on('disconnect', ()=>{
+      console.log("disconnect");
+      socket.emit('disconnect', playerName);
+    });
+  </script>
+</body>
+
+</html>
